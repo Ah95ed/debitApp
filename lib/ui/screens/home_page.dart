@@ -23,6 +23,15 @@ class HomePage extends StatelessWidget {
         title: const Text('Debt Manager'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.sync),
+            onPressed: () async {
+              await debtProvider.syncWithFirestore();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Sync Complete')),
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(
               themeProvider.themeMode == ThemeMode.dark
                   ? Icons.light_mode
@@ -163,7 +172,7 @@ class HomePage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '\$${debt.amount.toStringAsFixed(2)}',
+                  '\${debt.amount.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -174,16 +183,38 @@ class HomePage extends StatelessWidget {
                   icon: const Icon(Icons.edit),
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => AddEditDebtPage(debt: debt),
-                      ),
+                      MaterialPageRoute(builder: (context) => AddEditDebtPage(debt: debt)),
                     );
                   },
                 ),
                 IconButton(
                   icon: Icon(Icons.delete, color: Colors.red.shade300),
                   onPressed: () {
-                    debtProvider.deleteDebt(debt.phoneNumber);
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Confirm Deletion'),
+                          content: const Text(
+                              'This will delete the debt from all devices and the cloud. This action cannot be undone.'),
+                          actions: <Widget>[
+                            TextButton(
+                              child: const Text('Cancel'),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                            TextButton(
+                              child: const Text('Delete'),
+                              onPressed: () {
+                                debtProvider.deleteDebt(debt.phoneNumber);
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
                   },
                 ),
               ],

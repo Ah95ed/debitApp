@@ -28,6 +28,17 @@ class FirestoreService {
         .toList());
   }
 
+  Future<DocumentSnapshot> getDebt(String phoneNumber) {
+    return _db.collection('debts').doc(phoneNumber).get();
+  }
+
+  Future<List<Debt>> getDebtsFuture() async {
+    final snapshot = await _db.collection('debts').get();
+    return snapshot.docs
+        .map((doc) => Debt.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>))
+        .toList();
+  }
+
   // Add or update a debt in Firestore
   Future<void> addOrUpdateDebt(Debt debt) {
     final docRef = _db.collection('debts').doc(debt.phoneNumber);

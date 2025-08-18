@@ -12,7 +12,6 @@ class DebtProvider with ChangeNotifier {
 
   List<Debt> _debts = [];
   double _totalDebt = 0.0;
-  StreamSubscription? _firestoreSubscription;
 
   List<Debt> get debts => _debts;
   double get totalDebt => _totalDebt;
@@ -23,26 +22,12 @@ class DebtProvider with ChangeNotifier {
 
   void _init() async {
     await _loadDebtsFromLocalDB();
-    _listenToFirestoreChanges();
   }
 
   Future<void> _loadDebtsFromLocalDB() async {
     _debts = await _dbHelper.getAllDebts();
     _calculateTotalDebt();
     notifyListeners();
-  }
-
-  void _listenToFirestoreChanges() {
-    _firestoreSubscription?.cancel();
-    _firestoreSubscription = _firestoreService.getDebtsStream().listen((firestoreDebts) async {
-      for (var remoteDebt in firestoreDebts) {
-        final localDebt = await _dbHelper.getDebtByPhoneNumber(remoteDebt.phoneNumber);
-        if (localDebt == null || remoteDebt.lastUpdated.millisecondsSinceEpoch > localDebt.lastUpdated.millisecondsSinceEpoch) {
-          await _dbHelper.addOrUpdateDebt(remoteDebt);
-        }
-      }
-      await _loadDebtsFromLocalDB(); // Reload from local DB to ensure consistency
-    });
   }
 
   void _calculateTotalDebt() {
@@ -69,9 +54,31 @@ class DebtProvider with ChangeNotifier {
     await _loadDebtsFromLocalDB();
   }
 
-  @override
-  void dispose() {
-    _firestoreSubscription?.cancel();
-    super.dispose();
+  Future<void> syncWithFirestore() async {
+    // Upload local changes to Firestore
+    final localDebts = await _dbHelper.getAllDebts();
+    for (var localDebt in localDebts) {
+      final remoteDebtSnapshot = await _firestoreService.getDebt(localDebt.phoneNumber);
+      if (remoteDebtSnapshot.exists) {
+        final remoteDebt = Debt.fromFirestore(remoteDebtSnapshot as DocumentSnapshot<Map<String, dynamic>>);
+        if (localDebt.lastUpdated.millisecondsSinceEpoch > remoteDebt.lastUpdated.millisecondsSinceEpoch) {
+          await _firestoreService.addOrUpdateDebt(localDebt);
+        }
+      } else {
+        await _firestoreService.addOrUpdateDebt(localDebt);
+      }
+    }
+
+    // Download remote changes to local DB
+    final firestoreDebts = await _firestoreService.getDebtsFuture();
+    for (var remoteDebt in firestoreDebts) {
+      final localDebt = await _dbHelper.getDebtByPhoneNumber(remoteDebt.phoneNumber);
+      if (localDebt == null || remoteDebt.lastUpdated.millisecondsSinceEpoch > localDebt.lastUpdated.millisecondsSinceEpoch) {
+        await _dbHelper.addOrUpdateDebt(remoteDebt);
+      }
+    }
+
+    await _loadDebtsFromLocalDB();
   }
+
 }

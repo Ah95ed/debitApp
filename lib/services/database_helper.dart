@@ -1,6 +1,7 @@
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/debt_model.dart';
 
 class DatabaseHelper {
@@ -10,6 +11,9 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   Future<Database> get database async {
+    // from windows 
+     sqfliteFfiInit();
+     databaseFactory = databaseFactoryFfi;
     if (_database != null) return _database!;
     _database = await _initDB('debts.db');
     return _database!;
