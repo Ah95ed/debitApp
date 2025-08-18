@@ -184,8 +184,11 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
       } else {
         debtProvider.addDebt(newDebt);
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isEditing ? 'Debt updated' : 'Debt added')),
+      );
 
-      Navigator.of(context).pop();
+      // Navigator.of(context).pop();
     }
   }
 }

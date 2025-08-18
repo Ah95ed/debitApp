@@ -1,3 +1,4 @@
+import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -11,9 +12,12 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   Future<Database> get database async {
-    // from windows 
-     sqfliteFfiInit();
-     databaseFactory = databaseFactoryFfi;
+    // from windows
+    //  sqfliteFfiInit();
+    if (Platform.isWindows) {
+      databaseFactory = databaseFactoryFfi;
+    }
+
     if (_database != null) return _database!;
     _database = await _initDB('debts.db');
     return _database!;
@@ -22,7 +26,6 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-
     return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
@@ -58,7 +61,16 @@ CREATE TABLE debts (
     final db = await instance.database;
     final maps = await db.query(
       'debts',
-      columns: ['id', 'phoneNumber', 'name', 'amount', 'date', 'note', 'status', 'lastUpdated'],
+      columns: [
+        'id',
+        'phoneNumber',
+        'name',
+        'amount',
+        'date',
+        'note',
+        'status',
+        'lastUpdated',
+      ],
       where: 'phoneNumber = ?',
       whereArgs: [phoneNumber],
     );

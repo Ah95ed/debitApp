@@ -17,15 +17,39 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppLifecycleListener _listener;
+  late final DebtProvider _debtProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _debtProvider = DebtProvider();
+    _listener = AppLifecycleListener(
+      onStateChange: _debtProvider.didChangeAppLifecycleState,
+    );
+
+  }
+
+  @override
+  void dispose() {
+    _listener.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => DebtProvider()),
+        ChangeNotifierProvider.value(value: _debtProvider),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

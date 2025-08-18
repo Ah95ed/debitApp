@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,12 +13,13 @@ import 'add_edit_debt_page.dart';
 enum _Menu { importJson, importCsv, exportJson, exportCsv }
 
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final debtProvider = Provider.of<DebtProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    debtProvider.loadDebtsFromLocalDB(); // Load debts from local DB
 
     return Scaffold(
       appBar: AppBar(
@@ -26,9 +29,9 @@ class HomePage extends StatelessWidget {
             icon: const Icon(Icons.sync),
             onPressed: () async {
               await debtProvider.syncWithFirestore();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sync Complete')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Sync Complete')));
             },
           ),
           IconButton(
@@ -131,15 +134,16 @@ class HomePage extends StatelessWidget {
           children: [
             Text(
               'Total Debt',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             SizedBox(height: context.getHeight(12)),
             Text(
               '\$ ${totalDebt.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.secondary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -156,34 +160,33 @@ class HomePage extends StatelessWidget {
         final debt = debtProvider.debts[index];
         return Card(
           margin: EdgeInsets.symmetric(
-            horizontal: context.getWidth(12),
+            horizontal: context.getWidth(6),
             vertical: context.getHeight(5),
           ),
           child: ListTile(
-            contentPadding: EdgeInsets.all(context.getMinSize(12)),
+            contentPadding: EdgeInsets.all(context.getMinSize(10)),
             title: Text(
               debt.name,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              '${debt.phoneNumber}\n Added: ${DateFormat.yMMMd().format(debt.date)}',
+              '\$ ${debt.amount.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                // color: Theme.of(context).colorScheme.primary,
+                fontSize: context.getFontSize(15),
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '\${debt.amount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: context.getFontSize(16),
-                  ),
-                ),
                 IconButton(
                   icon: const Icon(Icons.edit),
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => AddEditDebtPage(debt: debt)),
+                      MaterialPageRoute(
+                        builder: (context) => AddEditDebtPage(debt: debt),
+                      ),
                     );
                   },
                 ),
@@ -196,7 +199,8 @@ class HomePage extends StatelessWidget {
                         return AlertDialog(
                           title: const Text('Confirm Deletion'),
                           content: const Text(
-                              'This will delete the debt from all devices and the cloud. This action cannot be undone.'),
+                            'This will delete the debt from all devices and the cloud. This action cannot be undone.',
+                          ),
                           actions: <Widget>[
                             TextButton(
                               child: const Text('Cancel'),
@@ -205,7 +209,7 @@ class HomePage extends StatelessWidget {
                               },
                             ),
                             TextButton(
-                              child: const Text('Delete'),
+                              child: const Text('حذف'),
                               onPressed: () {
                                 debtProvider.deleteDebt(debt.phoneNumber);
                                 Navigator.of(context).pop();
