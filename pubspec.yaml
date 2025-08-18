@@ -1,0 +1,53 @@
+
+name: debit_app
+description: A new Flutter project for managing debts.
+publish_to: 'none' 
+version: 1.0.0+1
+
+environment:
+  sdk: '3.9.0'
+  flutter: '3.35.1'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: 
+
+  # Local Storage
+  sqflite: 
+  sqflite_common_ffi:
+  path_provider: 
+
+  # Cloud Sync
+  firebase_core: 
+  cloud_firestore: 
+
+  # UI & Responsive Design
+  smart_sizer: 
+  
+  google_fonts: 
+
+  # Import / Export
+  file_picker: 
+  csv: 
+  share_plus: 
+  permission_handler: 
+  intl: 
+  
+  # Utilities
+  path: 
+  
+  cupertino_icons: 
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 
+
+flutter:
+  uses-material-design: true
+
+flutter_intl:
+  enabled: true
