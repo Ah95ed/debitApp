@@ -62,7 +62,7 @@ class ImportExportService {
             type: FileType.custom,
             allowedExtensions: [format],
           );
-          final file = File(outputFile);
+          final file = File(outputFile?? "" );
           await file.writeAsString(content);
           // Optionally, provide user feedback that the file has been saved.
           // For example, using a SnackBar in Flutter.
