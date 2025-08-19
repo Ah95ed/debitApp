@@ -1,8 +1,9 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_sizer/smart_sizer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../models/debt_model.dart';
 import '../../providers/debt_provider.dart';
@@ -10,7 +11,7 @@ import '../../providers/debt_provider.dart';
 class AddEditDebtPage extends StatefulWidget {
   final Debt? debt;
 
-  const AddEditDebtPage({Key? key, this.debt}) : super(key: key);
+  const AddEditDebtPage({super.key, this.debt});
 
   @override
   _AddEditDebtPageState createState() => _AddEditDebtPageState();
@@ -18,6 +19,11 @@ class AddEditDebtPage extends StatefulWidget {
 
 class _AddEditDebtPageState extends State<AddEditDebtPage> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneNumberController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
+
   late String _name;
   late String _phoneNumber;
   late double _amount;
@@ -56,6 +62,7 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               _buildTextFormField(
+                // controller: _nameController,
                 label: 'Name',
                 initialValue: _name,
                 validator: (value) =>
@@ -64,6 +71,7 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
               ),
               SizedBox(height: context.getHeight(12)),
               _buildTextFormField(
+                // controller: _phoneNumberController,
                 label: 'Phone Number',
                 initialValue: _phoneNumber,
                 enabled: !isEditing, // Phone number is the ID, so not editable
@@ -74,6 +82,7 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
               ),
               SizedBox(height: context.getHeight(12)),
               _buildTextFormField(
+                // controller: _amountController,
                 label: 'Amount',
                 initialValue: _amount.toString(),
                 keyboardType: TextInputType.number,
@@ -85,6 +94,7 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
               ),
               SizedBox(height: context.getHeight(12)),
               _buildTextFormField(
+                // controller: _noteController,
                 label: 'Note',
                 initialValue: _note,
                 maxLines: 3,
@@ -95,13 +105,13 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
               SizedBox(height: context.getHeight(18)),
               ElevatedButton(
                 onPressed: _saveForm,
-                child: const Text('Save Debt'),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(
                     vertical: context.getHeight(10),
                   ),
                   textStyle: TextStyle(fontSize: context.getFontSize(14)),
                 ),
+                child: const Text('Save Debt'),
               ),
             ],
           ),
@@ -111,6 +121,7 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
   }
 
   Widget _buildTextFormField({
+    // required TextEditingController controller,
     required String label,
     required String initialValue,
     required FormFieldSetter<String> onSaved,
@@ -168,15 +179,14 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       final debtProvider = Provider.of<DebtProvider>(context, listen: false);
-
+      log("message === ${_name}");
       final newDebt = Debt(
-        id: isEditing ? widget.debt!.id : null,
         phoneNumber: _phoneNumber,
         name: _name,
         amount: _amount,
         date: _date,
         note: _note,
-        lastUpdated: Timestamp.now(), // Always update timestamp on save
+        lastUpdated: DateTime.now(), // Always update timestamp on save
       );
 
       if (isEditing) {
@@ -185,7 +195,7 @@ class _AddEditDebtPageState extends State<AddEditDebtPage> {
         debtProvider.addDebt(newDebt);
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isEditing ? 'Debt updated' : 'Debt added')),
+        SnackBar(content: Text(isEditing ? 'تم تحديث الدين' : 'تمت إضافة الدين')),
       );
 
       // Navigator.of(context).pop();

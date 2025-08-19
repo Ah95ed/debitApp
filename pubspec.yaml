@@ -21,8 +21,7 @@ dependencies:
   path_provider: 
 
   # Cloud Sync
-  firebase_core: 
-  cloud_firestore: 
+  appwrite: ^17.1.0 
 
   # UI & Responsive Design
   smart_sizer: 
@@ -38,9 +37,10 @@ dependencies:
   
   # Utilities
   path: 
+  device_info_plus: 
   
   cupertino_icons: 
-  shared_preferences: ^2.5.3
+  shared_preferences: 
 
 dev_dependencies:
   flutter_test:

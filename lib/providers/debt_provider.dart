@@ -2,23 +2,25 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/src/foundation/diagnostics.dart';
 import 'package:flutter/src/services/predictive_back_event.dart';
 import '../models/debt_model.dart';
 import '../services/database_helper.dart';
-import '../services/firestore_service.dart';
+import '../services/appwrite_service.dart';
 
 class DebtProvider
     with ChangeNotifier, Diagnosticable
     implements AppLifecycleListener {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  final FirestoreService _firestoreService = FirestoreService();
+  final AppwriteService _appwriteService = AppwriteService();
 
   List<Debt> _debts = [];
+  List<Debt> _searchResults = [];
   double _totalDebt = 0.0;
+  StreamSubscription? _debtSubscription;
 
   List<Debt> get debts => _debts;
+  List<Debt> get searchResults => _searchResults;
   double get totalDebt => _totalDebt;
 
   DebtProvider() {
@@ -26,11 +28,27 @@ class DebtProvider
   }
   void _init() async {
     await loadDebtsFromLocalDB();
+    await syncWithAppwrite();
+    _debtSubscription = _appwriteService.subscribeToDebtChanges().listen((event) async {
+      if (event.events.contains('databases.*.collections.*.documents.*.delete')) {
+        final phoneNumber = event.payload['phoneNumber'];
+        if (phoneNumber != null) {
+          await _dbHelper.deleteDebt(phoneNumber);
+          await loadDebtsFromLocalDB();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _debtSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> loadDebtsFromLocalDB() async {
     _debts = await _dbHelper.getAllDebts();
-    
+    _searchResults = _debts;
     _calculateTotalDebt();
     notifyListeners();
   }
@@ -40,55 +58,69 @@ class DebtProvider
   }
 
   Future<void> addDebt(Debt debt) async {
-    debt.lastUpdated = Timestamp.now();
     await _dbHelper.addOrUpdateDebt(debt);
-    await _firestoreService.addOrUpdateDebt(debt);
+    await _appwriteService.addOrUpdateDebt(debt);
     await loadDebtsFromLocalDB();
-    // notifyListeners();
   }
 
   Future<void> updateDebt(Debt debt) async {
-    debt.lastUpdated = Timestamp.now();
     await _dbHelper.addOrUpdateDebt(debt);
-    await _firestoreService.addOrUpdateDebt(debt);
+    await _appwriteService.addOrUpdateDebt(debt);
     await loadDebtsFromLocalDB();
   }
 
   Future<void> deleteDebt(String phoneNumber) async {
     await _dbHelper.deleteDebt(phoneNumber);
-    await _firestoreService.deleteDebt(phoneNumber);
+    await _appwriteService.deleteDebt(phoneNumber);
     await loadDebtsFromLocalDB();
   }
 
-  Future<void> syncWithFirestore() async {
-    // Upload local changes to Firestore
+  void searchDebts(String query) {
+    if (query.isEmpty) {
+      _searchResults = _debts;
+    } else {
+      _searchResults = _debts
+          .where((debt) =>
+              debt.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
+    notifyListeners();
+  }
+
+  Future<void> syncWithAppwrite() async {
     final localDebts = await _dbHelper.getAllDebts();
+    final remoteDebts = await _appwriteService.getAllDebts();
+
+    // Upload local changes to Appwrite
     for (var localDebt in localDebts) {
-      final remoteDebtSnapshot = await _firestoreService.getDebt(
-        localDebt.phoneNumber,
-      );
-      if (remoteDebtSnapshot.exists) {
-        final remoteDebt = Debt.fromFirestore(
-          remoteDebtSnapshot as DocumentSnapshot<Map<String, dynamic>>,
-        );
-        if (localDebt.lastUpdated.millisecondsSinceEpoch >
-            remoteDebt.lastUpdated.millisecondsSinceEpoch) {
-          await _firestoreService.addOrUpdateDebt(localDebt);
+      Debt? remoteDebt;
+      for (var debt in remoteDebts) {
+        if (debt.phoneNumber == localDebt.phoneNumber) {
+          remoteDebt = debt;
+          break;
         }
-      } else {
-        await _firestoreService.addOrUpdateDebt(localDebt);
+      }
+
+      if (remoteDebt == null || localDebt.lastUpdated.isAfter(remoteDebt.lastUpdated)) {
+        await _appwriteService.addOrUpdateDebt(localDebt);
+      }
+    }
+
+    // Identify debts deleted on Appwrite and delete them locally
+    final remotePhoneNumbers = remoteDebts.map((d) => d.phoneNumber).toSet();
+    for (var localDebt in localDebts) {
+      if (!remotePhoneNumbers.contains(localDebt.phoneNumber)) {
+        await _dbHelper.deleteDebt(localDebt.phoneNumber);
       }
     }
 
     // Download remote changes to local DB
-    final firestoreDebts = await _firestoreService.getDebtsFuture();
-    for (var remoteDebt in firestoreDebts) {
+    for (var remoteDebt in remoteDebts) {
       final localDebt = await _dbHelper.getDebtByPhoneNumber(
         remoteDebt.phoneNumber,
       );
       if (localDebt == null ||
-          remoteDebt.lastUpdated.millisecondsSinceEpoch >
-              localDebt.lastUpdated.millisecondsSinceEpoch) {
+          remoteDebt.lastUpdated.isAfter(localDebt.lastUpdated)) {
         await _dbHelper.addOrUpdateDebt(remoteDebt);
       }
     }
@@ -99,7 +131,7 @@ class DebtProvider
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      syncWithFirestore();
+      syncWithAppwrite();
     }
   }
 

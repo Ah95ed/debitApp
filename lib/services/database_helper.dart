@@ -12,15 +12,44 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   Future<Database> get database async {
-    // from windows
-    //  sqfliteFfiInit();
     if (Platform.isWindows) {
-      databaseFactory = databaseFactoryFfi;
-    }
-
-    if (_database != null) return _database!;
+     databaseFactory = databaseFactoryFfi;
+      return await windowsApp();
+    }else{
+   if (_database != null) return _database!;
     _database = await _initDB('debts.db');
     return _database!;
+    }
+ 
+  }
+
+  static Future<Database> windowsApp() async {
+    final path = await getDatabasesPath();
+    final pathFile = join(path, 'debts.db');
+    return await databaseFactoryFfi.openDatabase(
+      pathFile,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, version) async {
+          const idType = 'TEXT PRIMARY KEY';
+          const textType = 'TEXT NOT NULL';
+          const doubleType = 'REAL NOT NULL';
+          const intType = 'INTEGER NOT NULL';
+
+          await db.execute('''
+CREATE TABLE debts (
+  id $idType,
+  phoneNumber $textType UNIQUE,
+  name $textType,
+  amount $doubleType,
+  date $textType,
+  note $textType,
+  status $textType,
+  lastUpdated $intType
+)''');
+        },
+      ),
+    );
   }
 
   Future<Database> _initDB(String filePath) async {
